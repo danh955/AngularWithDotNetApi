@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -29,12 +30,29 @@ namespace AngularWithDotNetApi
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
-            if (env.IsDevelopment())
+            // Redirect any non-API calls to the Angular application
+            // so our application can handle the routing
+            // Based on https://medium.com/@levifuller/building-an-angular-application-with-asp-net-core-in-visual-studio-2017-visualized-f4b163830eaa
+            app.Use(async (context, next) =>
             {
-                app.UseDeveloperExceptionPage();
-            }
+                await next();
+                if (context.Response.StatusCode == 404 &&
+                    !Path.HasExtension(context.Request.Path.Value) &&
+                    !context.Request.Path.Value.StartsWith("/api/"))
+                {
+                    context.Request.Path = "/index.html";
+                    await next();
+                }
+            });
 
-            app.UseMvc();
+            // Configures application for usage as API
+            // with default route of '/api/[Controller]'
+            app.UseMvcWithDefaultRoute();
+
+            // Configures application to serve the index.html file from /wwwroot
+            // when you access the server from a web browser
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
         }
     }
 }
